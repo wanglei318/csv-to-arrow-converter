@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +43,8 @@ public class CsvToArrowConverter {
     }
 
     public static void convertCsvToArrow(String inputCsvPath, String outputArrowPath) throws IOException {
-        try (BufferAllocator allocator = new RootAllocator()) {
+        BufferAllocator allocator = new RootAllocator();
+        try {
             // 读取CSV文件头
             CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
                     .parse(new FileReader(inputCsvPath));
@@ -59,11 +60,16 @@ public class CsvToArrowConverter {
 
             // 创建Arrow文件写入器
             File outputFile = new File(outputArrowPath);
-            try (org.apache.arrow.vector.ipc.ArrowFileWriter writer = 
-                    new org.apache.arrow.vector.ipc.ArrowFileWriter(root, null, 
-                            java.nio.channels.FileChannel.open(outputFile.toPath(), 
-                                    java.nio.file.StandardOpenOption.CREATE, 
-                                    java.nio.file.StandardOpenOption.WRITE))) {
+            FileChannel channel = FileChannel.open(
+                    outputFile.toPath(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.WRITE
+            );
+
+            org.apache.arrow.vector.ipc.ArrowFileWriter writer = null;
+            try {
+                writer = new org.apache.arrow.vector.ipc.ArrowFileWriter(
+                        root, null, channel);
 
                 writer.start();
                 List<VarCharVector> vectors = new ArrayList<>();
@@ -99,7 +105,15 @@ public class CsvToArrowConverter {
                     root.setRowCount(rowCount);
                     writer.writeBatch();
                 }
+            } finally {
+                if (writer != null) {
+                    writer.close();
+                }
+                channel.close();
+                root.close();
             }
+        } finally {
+            allocator.close();
         }
     }
 }
