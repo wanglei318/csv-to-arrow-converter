@@ -6,6 +6,7 @@ import org.apache.arrow.vector.*;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
+import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -25,22 +26,27 @@ public class CsvToArrowConverter {
     private static final int BATCH_SIZE = 1000;
 
     public static void main(String[] args) {
-        if (args.length != 2) {
-            System.out.println("Usage: java -jar csv-to-arrow-converter.jar <input.csv> <output.arrow>");
-            System.exit(1);
-        }
 
-        String inputFile = args[0];
-        String outputFile = args[1];
+
+        String inputFile = "D:\\dataReplay\\test_csv.csv";
+        String outputFile = process(inputFile);
+
+        logger.info("转换完成！输出文件: {}", outputFile);
+    }
+
+    public static String process(String inputFile){
+        String outputFile = inputFile.replace("csv", "feather");
 
         try {
             convertCsvToArrow(inputFile, outputFile);
             logger.info("转换完成！输出文件: {}", outputFile);
+            return outputFile;
         } catch (Exception e) {
             logger.error("转换过程中发生错误", e);
-            System.exit(1);
+            return null;
         }
     }
+
 
     public static void convertCsvToArrow(String inputCsvPath, String outputArrowPath) throws IOException {
         BufferAllocator allocator = new RootAllocator();
@@ -56,7 +62,7 @@ public class CsvToArrowConverter {
 
             // 创建VectorSchemaRoot
             VectorSchemaRoot root = VectorSchemaRoot.create(
-                    org.apache.arrow.vector.types.pojo.Schema.new_(fields), allocator);
+                    new Schema(fields), allocator);
 
             // 创建Arrow文件写入器
             File outputFile = new File(outputArrowPath);
