@@ -6,6 +6,7 @@
 
 - 支持任意列的 CSV 文件转换
 - 自动识别 CSV 文件头
+- 自动检测和处理UTF-8 BOM头
 - 批量处理以优化内存使用
 - 支持大文件处理
 - 生成标准的 Arrow 文件格式输出
@@ -41,6 +42,14 @@ java -jar target/csv-to-arrow-converter-1.0-SNAPSHOT-jar-with-dependencies.jar <
 ```bash
 java -jar target/csv-to-arrow-converter-1.0-SNAPSHOT-jar-with-dependencies.jar data.csv output.arrow
 ```
+
+## 特性说明
+
+### BOM头处理
+本工具会自动检测并处理CSV文件中的UTF-8 BOM头，确保数据正确读取。无需手动处理BOM头问题，工具会自动：
+- 检测文件是否包含BOM头
+- 如果存在BOM头，自动跳过
+- 确保输出的Arrow文件中不包含BOM头
 
 ## 示例
 
