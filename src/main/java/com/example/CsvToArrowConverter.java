@@ -1,5 +1,6 @@
 package com.example;
 
+import com.example.utils.BomUtils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.*;
@@ -14,8 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -26,15 +27,24 @@ public class CsvToArrowConverter {
     private static final int BATCH_SIZE = 1000;
 
     public static void main(String[] args) {
+        if (args.length != 2) {
+            logger.error("使用方法: java -jar csv-to-arrow-converter.jar <输入CSV文件> <输出Arrow文件>");
+            System.exit(1);
+        }
 
-
-        String inputFile = "D:\\dataReplay\\test_csv.csv";
-        String outputFile = process(inputFile);
-
-        logger.info("转换完成！输出文件: {}", outputFile);
+        String inputFile = args[0];
+        String outputFile = args[1];
+        
+        try {
+            convertCsvToArrow(inputFile, outputFile);
+            logger.info("转换完成！输出文件: {}", outputFile);
+        } catch (Exception e) {
+            logger.error("转换过程中发生错误", e);
+            System.exit(1);
+        }
     }
 
-    public static String process(String inputFile){
+    public static String process(String inputFile) {
         String outputFile = inputFile.replace("csv", "feather");
 
         try {
@@ -47,13 +57,17 @@ public class CsvToArrowConverter {
         }
     }
 
-
     public static void convertCsvToArrow(String inputCsvPath, String outputArrowPath) throws IOException {
         BufferAllocator allocator = new RootAllocator();
+        File inputFile = new File(inputCsvPath);
+        
         try {
+            // 使用BomUtils创建不带BOM的Reader
+            Reader reader = BomUtils.createReaderWithoutBOM(inputFile);
+            
             // 读取CSV文件头
             CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader()
-                    .parse(new FileReader(inputCsvPath));
+                    .parse(reader);
             
             List<Field> fields = new ArrayList<>();
             for (String header : parser.getHeaderNames()) {
@@ -117,6 +131,7 @@ public class CsvToArrowConverter {
                 }
                 channel.close();
                 root.close();
+                reader.close();
             }
         } finally {
             allocator.close();
